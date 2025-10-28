@@ -1,7 +1,7 @@
 import re
 from urllib.parse import urljoin, urldefrag, urlparse
 from bs4 import BeautifulSoup
-import lxml
+from lxml import html
 
 DO_NOT_ENTER = set()
 VISITED = set()
@@ -88,28 +88,108 @@ def is_valid(url):
 
 # HELPER FUNCTIONS:
 # 4 analytics functions
-def commonWordsWrite(): #writes the 50 most common words along with their word counts
+def common_words_file(): #done/untested
+    '''Q3: Write 50 most common words and their frequency in entire set of pages crawled. '''
+    global COMMON_WORDS
+    # ignore english stop words
+    with open('Report/CommonWords.txt', 'w') as txtfile:
+        word = ''
+        for freq, word in enumerate(sorted(COMMON_WORDS.items(), key=(lamba x:x[1]), reverse=True)[:50]):
+            string += f'{freq+1}, {word[0]} - {item[1]}\n'
+        txtfile.write(word)
+    
+def confirm_longest_page(url, pageLength): #done/untested
+    '''Check if url is the new longest page and update LONGEST_PAGE.'''
+    global LONGEST_PAGE
+    if LONGEST_PAGE[1] < pageLength:
+        LONGEST_PAGE = (url, pageLength)
     return
-def longestPageCheck(url, lengthOfPage): #checks if url is the new longest page
-    return
-def longestPageWrite(): #writes longest page's url and token count to a file
-    return
-def subdomainUpdate(url): #updates whenever a subdomain is visited
+
+def longest_page_file(): #done/untested
+    '''Q2: Write the longest page's url and # of words.'''
+    global LONGEST_PAGE
+    with open('LongestPage.txt', 'w') as txtfile
+        txtfile.write(f'Longest Page URL: {LONGEST_PAGE[0]} - {LONGEST_PAGE[1]}')
+
+def subdomains(url):
+    '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.
+    List contents: Subdomain, Number of Unique Pages. '''
+    global SUBDOMAINS
+    # confirm if in UCI domain
+    if '.uci.edu' not in url:
+        return
+    # grab urls ending in .uci.edu
+    structure = r'https?://(.*)\.uci.edu'
+    subdomain_struct = re.search(structure,url).group(1).lower()
+    # ignore www.uci.edu main page, only want other subdomains
+    if subdomain_struct === 'www':
+        return
+    # create dict key
+    subdomain_key = subdomain_struct + '.uci.edu'
+    if subdomain_key in subdomain_struct:
+        subdomain_struct[subdomain_key] +=1
+    else:
+        subdomain_struct[subdomain_key] = 1
     return
 
 
-def subdomainWrite(): #writes subdomains visited to a file
+def subdomain_write(): #done/untested
+    """ Writes what subdomains are visited in a file """
+    with open("Report/subdomains.txt", "w") as subdomains:
+        subdomains.write(f"Subdomain Number: {len(SUBDOMAINS)}\n") # Subdomain Number: 3
+        subdomains.write("SubSubdomain, Number of Unique Pages Crawled in that Subdomain")
+        for item in sorted(SUBDOMAINS):
+            subdomains.write(f"{item}, {SUBDOMAINS[item]}") # cs.uci.edu, 25
     return
-def uniqueWrite(): #writes the amount of unique urls visited to a file
+
+    
+def unique_urls_write(): #done/untested
+    """ Writes the total # of unique URLs successfully crawled to a file """
+    with open("Report/unique_urls.txt", "w") as unique_urls:
+        unique_urls.write(f"Unique Pages: {len(VISITED)}") #Unique Pages: 1247
+    return
+    
+    
+def tokenize(resp): #done/untested
+    """ Extracts & filters alphanumeric tokens """
+    try:
+        tree = html.fromstring(resp.raw_response.content)
+        text = tree.text_content()  
+        
+        tokens = re.findall(r'\b[a-zA-Z0-9]{3,}\b', text)
+        token_list = [token.lower() for token in tokens]
+        return token_list
+    except (AttributeError, TypeError) as error:
+        print(f"[TOKENIZER ERROR] {error}")
+        return []
+    return
+
+    
+def word_freq(token_list): #done/untested
+#TODO: use counters instead of dict
+    """ Counts word frequencies from token list """
+    for token in token_list:
+        if token not in stop_words and token.isalpha():
+            if token not in COMMON_WORDS:
+                COMMON_WORDS[token] = 1
+            else:
+                COMMON_WORDS[token] += 1
     return
 
 
-def tokenize(resp): #tokenizer function, ignores anything that is not alphanumeric
-    return
-def computeWordFrequencies(tokenList): #counts the common words --> useful for the common word file
-    return
-def wordCountCheck(resp): #check if the given site has too little or too much information
-    return
+def word_count_check(resp): #done/untested
+    """ Check if webpage has useable word count (100-100000) """
+    word_count = len(tokenize(resp))
+
+    if word_count < 100:
+        print(f"[WORD COUNT] {word_count} < 100)")
+        return True
+    elif word_count > 100000:
+        print(f"[WORD COUNT] {word_count} > 100000)")
+        return True
+    
+    return False # ok to crawl
+
 
 
 
