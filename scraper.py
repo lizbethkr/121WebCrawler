@@ -269,7 +269,7 @@ def tokenize(resp): #done/untested
         tokens = re.findall(r'\b[a-zA-Z0-9]{3,}\b', text)
         token_list = [token.lower() for token in tokens]
         return token_list
-    except (AttributeError, TypeError) as error:
+    except (AttributeError, TypeError, ParserError) as error:
         print(f"[TOKENIZER ERROR] {error}")
         return []
     return
