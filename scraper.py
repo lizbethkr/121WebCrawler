@@ -1,13 +1,17 @@
 import re
+import gc
+import os
 from urllib.parse import urljoin, urldefrag, urlparse
 from bs4 import BeautifulSoup
 from lxml import html
+
+os.makedirs('Report', exist_ok=True)
 
 DO_NOT_ENTER = set()
 VISITED = set() #CHANGE ALL VISITED TO SEEN 
 COMMON_WORDS = dict()
 SUBDOMAINS = dict()
-LONGEST_PAGE = ('Link', 0)
+LONGEST_PAGE = ('', 0)
 
 def scraper(url, resp):
     global DO_NOT_ENTER
@@ -46,84 +50,100 @@ def extract_next_links(url, resp):
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
     """
     links = set()
-    
+
     # log urls without 200 response (okay) and return empty set
     if resp.status != 200 or resp.raw_response is None:
         DO_NOT_ENTER.add(url)
         print(f'Skip {url} - HTTP: {resp.status}')
-        return links
-    
+        return list(links)
+
     # check for non-HTML pages (pdf, css, js, etc.)
     page_type = resp.raw_response.headers.get('Content-Type', '').lower()
-    if 'text/html' not in content_type:
+    if 'text/html' not in page_type:
         DO_NOT_ENTER.add(url)
-        return links
+        return list(links)
 
     # Avoid urls with too little/much info
     if word_count_check(resp):
         DO_NOT_ENTER.add(url)
-        return links
-    
+        return list(links)
+
     # Already Seen, ignore
-    if url in VISITED: 
-        print('Seen: {url}')
-        return links
-    
-    # Ensure url contains text, not binary 
-    try: 
+    if url in VISITED:
+        print(f'Seen: {url}')
+        return list(links)
+
+    # Ensure url contains text, not binary
+    try:
         decoded_html = resp.raw_response.content.decode('utf-8', errors='replace')
     except Exception as e:
         DO_NOT_ENTER.add(url)
-        return links
-    
+        return list(links)
+
     # Add url to visited and update subdomains
     VISITED.add(url)
     subdomains(url)
 
     # Retrieve links without fragments and complete checks to ensure validity
-    try: 
-        soup = BeautifulSoup(html, 'lxml')
+    try:
+        soup = BeautifulSoup(decoded_html, 'lxml')
         for tag in soup.find_all('a', href=True):
             og_url= urljoin(url, tag['href'])
+            clean_url, _ = urldefrag(og_url)
             # check validity
-            if is_valid(og_url)
-                links.add(og_url)
+            if is_valid(clean_url):
+                links.add(clean_url)
     except Exception as e:
         print(f"Error extracting links from {url}: {e}")
     finally: # memory
+        if 'soup' in locals():
+            del soup
+    if 'decoded_html' in locals():
         del decoded_html
-        del soup
-        gc.collect()
-    return links
+    gc.collect()
 
-def is_valid(url): #done/untested
+    return list(links)
+
+
+def is_valid(url):
     """ Decide whether to crawl this url (True) or not (False) """
     global DO_NOT_ENTER
-    try:        
+    try:
         parsed = urlparse(url)
         clean_url, _ = urldefrag(url)
         domain = parsed.netloc.lower()
 
+        # print(f"[DEBUG] Testing URL: {url}")
+        # print(f"[DEBUG] Domain: '{domain}'")
+        # print(f"[DEBUG] Clean URL: {clean_url}")
+
         if clean_url in DO_NOT_ENTER or clean_url in VISITED:
+            # print(f"[DEBUG] REJECTED: Already in DO_NOT_ENTER or VISITED")
             return False
 
         if parsed.scheme not in set(["http", "https"]):
+            # print(f"[DEBUG] REJECTED: Invalid scheme: {parsed.scheme}")
             return False
-            
-        if not (
-            domain.endswith(".ics.uci.edu") or
-            domain.endswith(".cs.uci.edu") or
-            domain.endswith(".informatics.uci.edu") or
-            domain.endswith(".stat.uci.edu")
-        ):
+
+        allowed_domains = ["ics.uci.edu", "cs.uci.edu", "informatics.uci.edu", "stat.uci.edu"]
+        domain_check_results = [domain.endswith(allowed_domain) for allowed_domain in
+                                allowed_domains]
+
+        # print(f"[DEBUG] Domain check results: {domain_check_results}")
+        # print(f"[DEBUG] Allowed domains: {allowed_domains}")
+
+        if not any(domain_check_results):
+            # print(f"[DEBUG] REJECTED: Domain not in allowed list")
             return False
-            
-        if any(part in clean_url.lower() for part in trap_keywords):
+
+        trap_detected = any(keyword in clean_url.lower() for keyword in trap_keywords)
+        if trap_detected:
+            # print(f"[DEBUG] REJECTED: Trap keyword detected")
             DO_NOT_ENTER.add(clean_url)
             return False
-            
-        return not re.match(
-            r".*\.(css|js|bmp|gif|jpe?g|ico"
+
+        file_match = re.search(
+            r"\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
             + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
             + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
@@ -132,11 +152,17 @@ def is_valid(url): #done/untested
             + r"|thmx|mso|arff|rtf|jar|csv"
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
 
+        if file_match:
+            # print(f"[DEBUG] REJECTED: File extension detected: {file_match.group()}")
+            return False
+
+        # print(f"[DEBUG] ACCEPTED: URL is valid")
+        return True
+
     except Exception as error:
         print(f"[IS_VALID ERROR] Failed to validate {url}: {error}")
         DO_NOT_ENTER.add(url)
         return False
-
 
 # HELPER FUNCTIONS:
 # 4 analytics functions + their helpers
@@ -158,7 +184,7 @@ def confirm_longest_page(url, pageLength): #done/untested
 def longest_page_file(): #done/untested
     '''Q2: Write the longest page's url and # of words.'''
     global LONGEST_PAGE
-    with open('LongestPage.txt', 'w') as txtfile
+    with open('Report/LongestPage.txt', 'w') as txtfile:
         txtfile.write(f'Longest Page URL: {LONGEST_PAGE[0]} - {LONGEST_PAGE[1]}')
 
 
@@ -167,31 +193,60 @@ def common_words_file(): #done/untested
     global COMMON_WORDS
     # ignore english stop words
     with open('Report/CommonWords.txt', 'w') as txtfile:
-        word = ''
-        for freq, word in enumerate(sorted(COMMON_WORDS.items(), key=(lambda x: x[1]), reverse=True)[:50]):
-            string += f'{freq+1}, {word[0]} - {item[1]}\n'
-        txtfile.write(word)
+        string = ""  # Initialize string variable
+        for freq, item in enumerate(sorted(COMMON_WORDS.items(), key=lambda x: x[1], reverse=True)[:50]):
+            string += f'{freq+1}, {item[0]} - {item[1]}\n'
+        txtfile.write(string)  # Write the complete string
 
+# def subdomains(url): #done/untested
+#     '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.
+#     List contents: Subdomain, Number of Unique Pages. '''
+#     global SUBDOMAINS
+#     # confirm if in UCI domain
+#     if '.uci.edu' not in url:
+#         return
+#     # grab urls ending in .uci.edu
+#     structure = r'https?://(.*)\.uci.edu'
+#     subdomain_struct = re.search(structure,url).group(1).lower()
+#     # ignore www.uci.edu main page, only want other subdomains
+#     if subdomain_struct == 'www':
+#         return
+#     # create dict key
+#     subdomain_key = subdomain_struct + '.uci.edu'
+#     if subdomain_key in subdomain_struct:
+#         subdomain_struct[subdomain_key] +=1
+#     else:
+#         subdomain_struct[subdomain_key] = 1
+#     return
 
-def subdomains(url): #done/untested
-    '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.
-    List contents: Subdomain, Number of Unique Pages. '''
+def subdomains(url):
+    '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.'''
     global SUBDOMAINS
     # confirm if in UCI domain
     if '.uci.edu' not in url:
         return
-    # grab urls ending in .uci.edu
-    structure = r'https?://(.*)\.uci.edu'
-    subdomain_struct = re.search(structure,url).group(1).lower()
-    # ignore www.uci.edu main page, only want other subdomains
-    if subdomain_struct === 'www':
-        return
-    # create dict key
-    subdomain_key = subdomain_struct + '.uci.edu'
-    if subdomain_key in subdomain_struct:
-        subdomain_struct[subdomain_key] +=1
-    else:
-        subdomain_struct[subdomain_key] = 1
+
+    try:
+        # grab urls ending in .uci.edu
+        structure = r'https?://(.*)\.uci.edu'
+        match = re.search(structure, url)
+        if not match:
+            return
+
+        subdomain_name = match.group(1).lower()  # Renamed variable to avoid confusion
+        # ignore www.uci.edu main page, only want other subdomains
+        if subdomain_name == 'www':
+            return
+        # create dict key
+        subdomain_key = subdomain_name + '.uci.edu'
+
+        # FIXED: Use SUBDOMAINS dict, not the string variable
+        if subdomain_key in SUBDOMAINS:
+            SUBDOMAINS[subdomain_key] += 1
+        else:
+            SUBDOMAINS[subdomain_key] = 1
+    except Exception as e:
+        print(f"Error in subdomains for {url}: {e}")
     return
 
 
