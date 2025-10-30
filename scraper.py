@@ -253,10 +253,10 @@ def subdomains(url):
 def subdomain_write(): #done/untested
     """ Q4 Writes what subdomains are visited in a file """
     with open("Report/subdomains.txt", "w") as subdomains:
-        subdomains.write(f"Subdomain Number: {len(SUBDOMAINS)}\n") # Subdomain Number: 3
-        subdomains.write("SubSubdomain, Number of Unique Pages Crawled in that Subdomain")
+        subdomains.write(f"Subdomain Number: {len(SUBDOMAINS)}\n\n") # Subdomain Number: 3
+        subdomains.write("SubSubdomain, Number of Unique Pages Crawled in that Subdomain\n\n")
         for item in sorted(SUBDOMAINS):
-            subdomains.write(f"{item}, {SUBDOMAINS[item]}") # cs.uci.edu, 25
+            subdomains.write(f"{item}, {SUBDOMAINS[item]}\n") # cs.uci.edu, 25
     return
     
     
