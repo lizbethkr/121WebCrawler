@@ -260,20 +260,40 @@ def subdomain_write(): #done/untested
     return
     
     
-def tokenize(resp): #done/untested
-    """ Extracts & filters alphanumeric tokens """
+# def tokenize(resp): #done/untested
+#     """ Extracts & filters alphanumeric tokens """
+#     try:
+#         tree = html.fromstring(resp.raw_response.content)
+#         for element in tree.xpath('//script | //style'):
+#             element.getparent().remove(element)
+#
+#         text = tree.text_content()
+#
+#         tokens = re.findall(r'\b[a-zA-Z0-9]{3,}\b', text)
+#         token_list = [token.lower() for token in tokens]
+#         return token_list
+#     # except (AttributeError, TypeError, ParserError) as error:
+#     except (AttributeError, TypeError) as error:
+#         print(f"[TOKENIZER ERROR] {error}")
+#         return []
+
+def tokenize(resp):
+    """Extracts & filters alphanumeric tokens from actual page content only"""
     try:
-        tree = html.fromstring(resp.raw_response.content)
-        text = tree.text_content()  
-        
+        soup = BeautifulSoup(resp.raw_response.content, 'lxml')
+
+        for element in soup(['script', 'style']):
+            element.decompose()
+
+        text = soup.get_text()
+        text = ' '.join(text.split())
+
         tokens = re.findall(r'\b[a-zA-Z0-9]{3,}\b', text)
         token_list = [token.lower() for token in tokens]
         return token_list
-    except (AttributeError, TypeError, ParserError) as error:
+    except Exception as error:
         print(f"[TOKENIZER ERROR] {error}")
         return []
-    return
-
     
 def word_freq(token_list): #done/untested
 #TODO: use counters instead of dict
@@ -291,11 +311,11 @@ def word_count_check(resp): #done/untested
     """ Check if webpage has useable word count (100-100000) """
     word_count = len(tokenize(resp))
 
-    if word_count < 100:
-        print(f"[WORD COUNT] {word_count} < 100)")
+    if word_count < 50:
+        print(f"[WORD COUNT] {word_count} < 50)")
         return True
-    elif word_count > 100000:
-        print(f"[WORD COUNT] {word_count} > 100000)")
+    elif word_count > 75000:
+        print(f"[WORD COUNT] {word_count} > 75000)")
         return True
     
     return False # ok to crawl
