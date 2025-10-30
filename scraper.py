@@ -281,11 +281,9 @@ def tokenize(resp):
     """Extracts & filters alphanumeric tokens from actual page content only"""
     try:
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
-
         for element in soup(['script', 'style']):
             element.decompose()
-
-        text = soup.get_text()
+        text = soup.get_text(separator=' ')
         text = ' '.join(text.split())
 
         tokens = re.findall(r'\b[a-zA-Z0-9]{3,}\b', text)

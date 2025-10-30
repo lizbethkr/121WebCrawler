@@ -1,2 +1,6 @@
-Subdomain Number: 36
-SubSubdomain, Number of Unique Pages Crawled in that Subdomainarchive-beta.ics.uci.edu, 22archive.ics.uci.edu, 396asterix.ics.uci.edu, 8cert.ics.uci.edu, 20chenli.ics.uci.edu, 12cloudberry.ics.uci.edu, 80code.ics.uci.edu, 28courselisting.ics.uci.edu, 6cwicsocal18.ics.uci.edu, 24cyberclub.ics.uci.edu, 22ds4all.ics.uci.edu, 8flamingo.ics.uci.edu, 22fr.ics.uci.edu, 4grape.ics.uci.edu, 294hai.ics.uci.edu, 4hobbes.ics.uci.edu, 16ics.uci.edu, 120intranet.ics.uci.edu, 2ipubmed.ics.uci.edu, 2isg.ics.uci.edu, 68nalini.ics.uci.edu, 12ngs.ics.uci.edu, 3872psearch.ics.uci.edu, 2sherlock.ics.uci.edu, 14statistics-stage.ics.uci.edu, 16tad.ics.uci.edu, 6tastier.ics.uci.edu, 2ugradforms.ics.uci.edu, 2vision.ics.uci.edu, 68wics.ics.uci.edu, 1116wiki.ics.uci.edu, 2www.cecs.uci.edu, 10www.ics.uci.edu, 410www.informatics.uci.edu, 168www.nacs.uci.edu, 6www.stat.uci.edu, 36
+Subdomain Number: 2
+
+SubSubdomain, Number of Unique Pages Crawled in that Subdomain
+
+cs.uci.edu, 3
+ics.uci.edu, 5

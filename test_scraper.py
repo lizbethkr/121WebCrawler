@@ -305,10 +305,10 @@ class TestWebScraper(unittest.TestCase):
         print("Running test_word_count_check_too_short")
         mock_resp = Mock()
         with patch('scraper.tokenize') as mock_tokenize:
-            mock_tokenize.return_value = ['word'] * 50  # 50 words
+            mock_tokenize.return_value = ['word'] * 49  # 49 words (BELOW threshold)
             result = word_count_check(mock_resp)
-            print(f"Word count check result for 50 words: {result}")
-            self.assertTrue(result)
+            print(f"Word count check result for 49 words: {result}")
+            self.assertTrue(result)  # Should return True for too few words
 
     def test_word_count_check_too_long(self):
         """Test too long word count"""
@@ -412,6 +412,241 @@ class TestWebScraper(unittest.TestCase):
         self.assertIn('word', COMMON_WORDS)
         self.assertNotIn('test123', COMMON_WORDS)
         self.assertNotIn('456', COMMON_WORDS)
+
+    def test_tokenize_removes_html_tags(self):
+        """Test that tokenize function removes HTML tags and extracts only text content"""
+        print("Running test_tokenize_removes_html_tags")
+
+        # Test cases with HTML containing various tags
+        test_cases = [
+            {
+                'name': 'Basic HTML with paragraphs',
+                'html': b'<html><body><p>This is a paragraph</p><p>Another paragraph here</p></body></html>',
+                'expected_tokens': ['this', 'paragraph', 'another', 'paragraph', 'here']
+            },
+            {
+                'name': 'HTML with script and style tags',
+                'html': b'''
+                <html>
+                <head>
+                    <style>body { color: red; }</style>
+                    <script>console.log("hello");</script>
+                </head>
+                <body>
+                    <p>Actual content here</p>
+                    <div>More real text</div>
+                </body>
+                </html>
+                ''',
+                'expected_tokens': ['actual', 'content', 'here', 'more', 'real', 'text']
+            },
+            {
+                'name': 'HTML with mixed content and CSS classes',
+                'html': b'''
+                <html>
+                <body>
+                    <div class="header">Welcome to the site</div>
+                    <p id="main-content">This is the main content area with important information</p>
+                    <span style="color: blue;">Styled text</span>
+                </body>
+                </html>
+                ''',
+                'expected_tokens': ['welcome', 'the', 'site', 'this', 'the', 'main', 'content',
+                                    'area', 'with', 'important', 'information', 'styled', 'text']
+            },
+            {
+                'name': 'HTML with navigation and footer',
+                'html': b'''
+                <html>
+                <nav>Home About Contact</nav>
+                <main>
+                    <article>
+                        <h1>Article Title</h1>
+                        <p>Article content goes here in the main section</p>
+                    </article>
+                </main>
+                <footer>Copyright information</footer>
+                </html>
+                ''',
+                'expected_tokens': ['home', 'about', 'contact', 'article', 'title', 'article',
+                                    'content', 'goes', 'here', 'the', 'main', 'section',
+                                    'copyright', 'information']
+            },
+            {
+                'name': 'HTML with JavaScript variables and CSS properties',
+                'html': b'''
+                <html>
+                <script>
+                    var color = "red";
+                    function test() { return true; }
+                    let backgroundColor = "#fff";
+                </script>
+                <style>
+                    .container { width: 100%; height: auto; }
+                    p { font-size: 16px; margin: 10px; }
+                </style>
+                <body>
+                    <p>Real page content that should be extracted</p>
+                    <div>Additional meaningful text</div>
+                </body>
+                </html>
+                ''',
+                'expected_tokens': ['real', 'page', 'content', 'that', 'should', 'extracted',
+                                    'additional', 'meaningful', 'text']
+            },
+            {
+                'name': 'HTML with forms and inputs',
+                'html': b'''
+                <html>
+                <body>
+                    <form action="/submit" method="post">
+                        <input type="text" name="username">
+                        <input type="password" name="password">
+                        <button type="submit">Login to system</button>
+                    </form>
+                    <p>Form description text</p>
+                </body>
+                </html>
+                ''',
+                'expected_tokens': ['login', 'system', 'form', 'description', 'text']
+            }
+        ]
+
+        # CSS/JS specific keywords that should NEVER appear in content
+        # These are programming-specific identifiers, not common English words
+        css_js_specific_keywords = [
+            'var', 'function', 'return', 'let', 'console', 'log',
+            'backgroundColor', 'width', 'height', 'font', 'size', 'margin',
+            'action', 'submit', 'method', 'post', 'type', 'name'
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(test_case = test_case['name']):
+                print(f"\nTesting: {test_case['name']}")
+
+                mock_resp = Mock()
+                mock_resp.raw_response = Mock()
+                mock_resp.raw_response.content = test_case['html']
+
+                tokens = tokenize(mock_resp)
+
+                print(f"Extracted tokens: {tokens}")
+                print(f"Expected tokens: {test_case['expected_tokens']}")
+
+                # Check that we got the expected tokens
+                self.assertEqual(tokens, test_case['expected_tokens'],
+                                 f"Failed for test case: {test_case['name']}")
+
+                # Additional assertion: verify no CSS/JS-specific tokens are present
+                for keyword in css_js_specific_keywords:
+                    self.assertNotIn(keyword.lower(), tokens,
+                                     f"CSS/JS keyword '{keyword}' found in tokens for {test_case['name']}")
+    def test_tokenize_preserves_meaningful_content(self):
+        """Test that tokenize preserves meaningful academic content"""
+        print("Running test_tokenize_preserves_meaningful_content")
+
+        # Simulate academic content that should be preserved
+        academic_html = b'''
+        <html>
+        <head>
+            <title>Research in Computer Science</title>
+            <style>.title { font-size: 24px; }</style>
+            <script>trackPageView();</script>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Artificial Intelligence Research</h1>
+                <p>The Department of Computer Science conducts cutting-edge research 
+                in artificial intelligence, machine learning, and data science. 
+                Our faculty members work on innovative projects that advance the 
+                field of computer science.</p>
+
+                <section id="research-areas">
+                    <h2>Research Areas</h2>
+                    <ul>
+                        <li>Machine Learning and Data Mining</li>
+                        <li>Computer Vision and Pattern Recognition</li>
+                        <li>Natural Language Processing</li>
+                        <li>Robotics and Autonomous Systems</li>
+                    </ul>
+                </section>
+
+                <div class="publications">
+                    <h3>Recent Publications</h3>
+                    <p>Our researchers have published papers in top-tier conferences 
+                    including NeurIPS, ICML, and CVPR.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+
+        mock_resp = Mock()
+        mock_resp.raw_response = Mock()
+        mock_resp.raw_response.content = academic_html
+
+        tokens = tokenize(mock_resp)
+
+        print(f"Academic content tokens: {tokens}")
+
+        # Verify meaningful academic content is preserved
+        expected_academic_words = [
+            'research', 'computer', 'science', 'artificial', 'intelligence',
+            'machine', 'learning', 'data', 'faculty', 'projects', 'field',
+            'areas', 'vision', 'pattern', 'recognition', 'natural', 'language',
+            'processing', 'robotics', 'autonomous', 'systems', 'publications',
+            'recent', 'researchers', 'published', 'papers', 'conferences'
+        ]
+
+        for word in expected_academic_words:
+            self.assertIn(word, tokens, f"Academic word '{word}' should be preserved")
+
+        # Verify CSS/JS content is removed
+        css_js_words = ['title', 'font', 'size', 'trackpageview', 'container', 'class']
+        for word in css_js_words:
+            self.assertNotIn(word, tokens, f"CSS/JS word '{word}' should be removed")
+
+    def test_tokenize_empty_or_minimal_content(self):
+        """Test tokenize with empty or minimal content"""
+        print("Running test_tokenize_empty_or_minimal_content")
+
+        test_cases = [
+            {
+                'name': 'Empty HTML',
+                'html': b'<html></html>',
+                'expected_tokens': []
+            },
+            {
+                'name': 'Only script tags',
+                'html': b'<html><script>var x = 1;</script><script>function y() {}</script></html>',
+                'expected_tokens': []
+            },
+            {
+                'name': 'Only style tags',
+                'html': b'<html><style>body { margin: 0; }</style><style>p { color: black; }</style></html>',
+                'expected_tokens': []
+            },
+            {
+                'name': 'Mixed but very short content',
+                'html': b'<html><style>css</style><p>Hi</p><script>js</script></html>',
+                'expected_tokens': []  # "Hi" is less than 3 characters, so filtered out
+            }
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(test_case = test_case['name']):
+                print(f"Testing: {test_case['name']}")
+
+                mock_resp = Mock()
+                mock_resp.raw_response = Mock()
+                mock_resp.raw_response.content = test_case['html']
+
+                tokens = tokenize(mock_resp)
+
+                print(f"Tokens: {tokens}")
+                print(f"Expected: {test_case['expected_tokens']}")
+
+                self.assertEqual(tokens, test_case['expected_tokens'])
 
 
 if __name__ == '__main__':
