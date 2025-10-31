@@ -8,7 +8,7 @@ from lxml import html
 os.makedirs('Report', exist_ok=True)
 
 DO_NOT_ENTER = set()
-VISITED = set() #CHANGE ALL VISITED TO SEEN 
+VISITED = set() 
 COMMON_WORDS = dict()
 SUBDOMAINS = dict()
 LONGEST_PAGE = ('', 0)
@@ -187,7 +187,7 @@ def is_valid(url):
 def unique_pages_write(): #done/untested
     """ Q1:Writes the total # of unique pages successfully crawled to a file """
     with open("Report/UniquePages.txt", "w") as unique_pages:
-        unique_pages.write(f"Unique Pages: {len(VISITED)}") #Unique Pages: 1247
+        unique_pages.write(f"Unique Pages: {sum(SUBDOMAINS.values())}")
     return
 
 

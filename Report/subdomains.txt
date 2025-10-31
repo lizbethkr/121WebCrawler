@@ -1,6 +1,0 @@
-Subdomain Number: 2
-
-SubSubdomain, Number of Unique Pages Crawled in that Subdomain
-
-cs.uci.edu, 3
-ics.uci.edu, 5
