@@ -33,7 +33,7 @@ def scraper(url, resp):
         common_words_file()
         longest_page_file()
         subdomain_write()
-        unique_urls_write()
+        unique_pages_write()
         print(f"[WRITE UPDATE] Processed {len(VISITED)} pages")
     return valids
 
@@ -107,7 +107,9 @@ def extract_next_links(url, resp):
 
 def is_valid(url):
     """ Decide whether to crawl this url (True) or not (False) """
+    global VISITED
     global DO_NOT_ENTER
+    
     try:
         parsed = urlparse(url)
         clean_url, _ = urldefrag(url)
@@ -121,26 +123,42 @@ def is_valid(url):
             # print(f"[DEBUG] REJECTED: Already in DO_NOT_ENTER or VISITED")
             return False
 
-        if parsed.scheme not in set(["http", "https"]):
+        if parsed.scheme not in {"http", "https"}:
             # print(f"[DEBUG] REJECTED: Invalid scheme: {parsed.scheme}")
             return False
 
         allowed_domains = ["ics.uci.edu", "cs.uci.edu", "informatics.uci.edu", "stat.uci.edu"]
-        domain_check_results = [domain.endswith(allowed_domain) for allowed_domain in
-                                allowed_domains]
+        # domain_check_results = [domain.endswith(allowed_domain) for allowed_domain in
+        #                         allowed_domains]
 
-        # print(f"[DEBUG] Domain check results: {domain_check_results}")
-        # print(f"[DEBUG] Allowed domains: {allowed_domains}")
+        # # print(f"[DEBUG] Domain check results: {domain_check_results}")
+        # # print(f"[DEBUG] Allowed domains: {allowed_domains}")
 
-        if not any(domain_check_results):
-            # print(f"[DEBUG] REJECTED: Domain not in allowed list")
+        # if not any(domain_check_results):
+        #     # print(f"[DEBUG] REJECTED: Domain not in allowed list")
+        #     return False
+        if "grape.ics.uci.edu" in base:
+            DoNotCrawl.add(url)
             return False
 
+        if not any(
+            domain == allowed or domain.endswith("." + allowed)
+            for allowed in allowed_domains
+        ):
+            return False
+
+        # avoiding traps
         trap_detected = any(keyword in clean_url.lower() for keyword in trap_keywords)
         if trap_detected:
             # print(f"[DEBUG] REJECTED: Trap keyword detected")
             DO_NOT_ENTER.add(clean_url)
             return False
+        
+        # block any events folders (calendars tend to be traps)
+        if re.search(r"/events?(/|$)", clean_url.lower()):
+            DO_NOT_ENTER.add(clean_url)
+            return False
+
 
         file_match = re.search(
             r"\.(css|js|bmp|gif|jpe?g|ico"
@@ -166,10 +184,10 @@ def is_valid(url):
 
 # HELPER FUNCTIONS:
 # 4 analytics functions + their helpers
-def unique_urls_write(): #done/untested
-    """ Q1:Writes the total # of unique URLs successfully crawled to a file """
-    with open("Report/UniquePages.txt", "w") as unique_urls:
-        unique_urls.write(f"Unique Pages: {len(VISITED)}") #Unique Pages: 1247
+def unique_pages_write(): #done/untested
+    """ Q1:Writes the total # of unique pages successfully crawled to a file """
+    with open("Report/UniquePages.txt", "w") as unique_pages:
+        unique_pages.write(f"Unique Pages: {len(VISITED)}") #Unique Pages: 1247
     return
 
 
@@ -178,8 +196,6 @@ def confirm_longest_page(url, pageLength): #done/untested
     global LONGEST_PAGE
     if LONGEST_PAGE[1] < pageLength:
         LONGEST_PAGE = (url, pageLength)
-    return
-
 
 def longest_page_file(): #done/untested
     '''Q2: Write the longest page's url and # of words.'''
