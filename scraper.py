@@ -168,7 +168,7 @@ def is_valid(url):
 # 4 analytics functions + their helpers
 def unique_urls_write(): #done/untested
     """ Q1:Writes the total # of unique URLs successfully crawled to a file """
-    with open("Report/unique_urls.txt", "w") as unique_urls:
+    with open("Report/UniquePages.txt", "w") as unique_urls:
         unique_urls.write(f"Unique Pages: {len(VISITED)}") #Unique Pages: 1247
     return
 
@@ -185,7 +185,7 @@ def longest_page_file(): #done/untested
     '''Q2: Write the longest page's url and # of words.'''
     global LONGEST_PAGE
     with open('Report/LongestPage.txt', 'w') as txtfile:
-        txtfile.write(f'Longest Page URL: {LONGEST_PAGE[0]} - {LONGEST_PAGE[1]}')
+        txtfile.write(f'Longest Page URL: {LONGEST_PAGE[0]} | # of Words: {LONGEST_PAGE[1]}')
 
 
 def common_words_file(): #done/untested
@@ -254,7 +254,7 @@ def subdomain_write(): #done/untested
     """ Q4 Writes what subdomains are visited in a file """
     with open("Report/subdomains.txt", "w") as subdomains:
         subdomains.write(f"Subdomain Number: {len(SUBDOMAINS)}\n\n") # Subdomain Number: 3
-        subdomains.write("SubSubdomain, Number of Unique Pages Crawled in that Subdomain\n\n")
+        subdomains.write("Subdomain, # of Unique Pages in Subdomain\n\n")
         for item in sorted(SUBDOMAINS):
             subdomains.write(f"{item}, {SUBDOMAINS[item]}\n") # cs.uci.edu, 25
     return
