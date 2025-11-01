@@ -259,7 +259,7 @@ def subdomains(url):
 
     try:
         # grab urls ending in .uci.edu
-        structure = r'https?://(.*)\.uci\..edu'
+        structure = r'https?://(.*)\.uci\.edu'
         match = re.search(structure, url)
         if not match:
             return
@@ -340,10 +340,10 @@ def word_count_check(resp): #done/untested
     """ Check if webpage has useable word count (100-100000) """
     word_count = len(tokenize(resp))
 
-    if word_count < 50:
+    if word_count < 10:
         print(f"[WORD COUNT] {word_count} < 10)")
         return True
-    elif word_count > 75000:
+    elif word_count > 100000:
         print(f"[WORD COUNT] {word_count} > 100000)")
         return True
     
