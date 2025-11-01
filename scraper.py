@@ -143,22 +143,22 @@ def is_valid(url):
             return False
 
         allowed_domains = ["ics.uci.edu", "cs.uci.edu", "informatics.uci.edu", "stat.uci.edu"]
-        # domain_check_results = [domain.endswith(allowed_domain) for allowed_domain in
-        #                         allowed_domains]
+        # Fix domain matching to allow subdomains of the allowed domains
+        domain_valid = any(
+            domain == allowed_domain or
+            domain.endswith("." + allowed_domain)
+            for allowed_domain in allowed_domains
+        )
 
-        # if not any(domain_check_results):
-        #     # print(f"[DEBUG] REJECTED: Domain not in allowed list")
-        #     return False
-        #if "grape.ics.uci.edu" in base:
-            #DO_NOT_ENTER.add(url)
-            #return False
-
-        if not any(
-            domain == allowed or domain.endswith("." + allowed)
-            for allowed in allowed_domains
-        ):
+        if not domain_valid:
             log_debug("outside_allowed_domain", clean_url)
             return False
+        # if not any(
+        #     domain == allowed or domain.endswith("." + allowed)
+        #     for allowed in allowed_domains
+        # ):
+        #     log_debug("outside_allowed_domain", clean_url)
+        #     return False
 
         # avoiding traps
         trap_detected = any(keyword in clean_url.lower() for keyword in trap_keywords)
@@ -230,57 +230,61 @@ def common_words_file(): #done/untested
             string += f'{freq+1}, {item[0]} - {item[1]}\n'
         txtfile.write(string)  # Write the complete string
 
-# def subdomains(url): #done/untested
-#     '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.
-#     List contents: Subdomain, Number of Unique Pages. '''
+
+# def subdomains(url):
+#     '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.'''
 #     global SUBDOMAINS
 #     # confirm if in UCI domain
 #     if '.uci.edu' not in url:
 #         return
-#     # grab urls ending in .uci.edu
-#     structure = r'https?://(.*)\.uci.edu'
-#     subdomain_struct = re.search(structure,url).group(1).lower()
-#     # ignore www.uci.edu main page, only want other subdomains
-#     if subdomain_struct == 'www':
-#         return
-#     # create dict key
-#     subdomain_key = subdomain_struct + '.uci.edu'
-#     if subdomain_key in subdomain_struct:
-#         subdomain_struct[subdomain_key] +=1
-#     else:
-#         subdomain_struct[subdomain_key] = 1
+#
+#     try:
+#         # grab urls ending in .uci.edu
+#         structure = r'https?://(.*)\.uci\.edu'
+#         match = re.search(structure, url)
+#         if not match:
+#             return
+#
+#         subdomain_name = match.group(1).lower()  # Renamed variable to avoid confusion
+#         # ignore www.uci.edu main page, only want other subdomains
+#         if subdomain_name == 'www':
+#             return
+#         # create dict key
+#         subdomain_key = subdomain_name + '.uci.edu'
+#
+#         # FIXED: Use SUBDOMAINS dict, not the string variable
+#         if subdomain_key in SUBDOMAINS:
+#             SUBDOMAINS[subdomain_key] += 1
+#         else:
+#             SUBDOMAINS[subdomain_key] = 1
+#     except Exception as e:
+#         print(f"Error in subdomains for {url}: {e}")
 #     return
 
 def subdomains(url):
-    '''Q4: Update list of subdomains (alphabetically), and # of unique pages in each.'''
     global SUBDOMAINS
-    # confirm if in UCI domain
-    if '.uci.edu' not in url:
-        return
-
     try:
-        # grab urls ending in .uci.edu
-        structure = r'https?://(.*)\.uci\.edu'
-        match = re.search(structure, url)
-        if not match:
+        parsed = urlparse(url)
+        host = parsed.hostname  # this strips any port
+        if not host:
             return
 
-        subdomain_name = match.group(1).lower()  # Renamed variable to avoid confusion
-        # ignore www.uci.edu main page, only want other subdomains
-        if subdomain_name == 'www':
-            return
-        # create dict key
-        subdomain_key = subdomain_name + '.uci.edu'
+        host = host.lower().rstrip('.')  # normalize
 
-        # FIXED: Use SUBDOMAINS dict, not the string variable
-        if subdomain_key in SUBDOMAINS:
-            SUBDOMAINS[subdomain_key] += 1
-        else:
-            SUBDOMAINS[subdomain_key] = 1
+        # Only consider uci.edu subdomains
+        if not host.endswith('.uci.edu'):
+            return
+
+        # Exclude the root and common www host
+        if host == 'uci.edu' or host == 'www.uci.edu':
+            return
+
+        # At this point host is something like 'ics.uci.edu' or 'vision.ics.uci.edu'
+        SUBDOMAINS[host] = SUBDOMAINS.get(host, 0) + 1
+
     except Exception as e:
+        # don't crash the crawler because of a weird URL
         print(f"Error in subdomains for {url}: {e}")
-    return
-
 
 def subdomain_write(): #done/untested
     """ Q4 Writes what subdomains are visited in a file """
@@ -292,22 +296,6 @@ def subdomain_write(): #done/untested
     return
     
     
-# def tokenize(resp): #done/untested
-#     """ Extracts & filters alphanumeric tokens """
-#     try:
-#         tree = html.fromstring(resp.raw_response.content)
-#         for element in tree.xpath('//script | //style'):
-#             element.getparent().remove(element)
-#
-#         text = tree.text_content()
-#
-#         tokens = re.findall(r'\b[a-zA-Z0-9]{3,}\b', text)
-#         token_list = [token.lower() for token in tokens]
-#         return token_list
-#     # except (AttributeError, TypeError, ParserError) as error:
-#     except (AttributeError, TypeError) as error:
-#         print(f"[TOKENIZER ERROR] {error}")
-#         return []
 
 def tokenize(resp):
     """Extracts & filters alphanumeric tokens from actual page content only"""
@@ -360,15 +348,19 @@ def log_debug(reason, url):
 
 
 
+# trap_keywords = [
+#     'ical=', 'outlook-ical', 'eventdisplay=past', 'tribe-bar-date', 'action=', 'share=', 'swiki',
+#     'calendar', 'event', 'events', '/?page=', '/?year=', '/?month=', '/?day=', '/?view=archive',
+#     '/?sort=', 'sessionid=', 'utm_', 'replytocom=', '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
+#     '/doku', '/files/', '/papers/', '/publications/', '/pub/', 'wp-login.php', '?do=edit', '?do=diff','?rev=',
+#     '/~eppstein/', '/covid19/' , '/doku', 'seminar-series', 'doku.php', 'seminarseries' , 'department-seminars',
+#     '/Nanda', '/seminar'
+#     ]
 trap_keywords = [
-    'ical=', 'outlook-ical', 'eventdisplay=past', 'tribe-bar-date', 'action=', 'share=', 'swiki',
-    'calendar', 'event', 'events', '/?page=', '/?year=', '/?month=', '/?day=', '/?view=archive',
-    '/?sort=', 'sessionid=', 'utm_', 'replytocom=', '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
-    '/doku', '/files/', '/papers/', '/publications/', '/pub/', 'wp-login.php', '?do=edit', '?do=diff','?rev=',
-    '/~eppstein/', '/covid19/' , '/doku', 'seminar-series', 'doku.php', 'seminarseries' , 'department-seminars',
-    '/Nanda', '/seminar'
-    ]
-    
+    'action=', 'share=', 'swiki', 'sessionid=', 'utm_', 'replytocom=',
+    '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
+    '/doku', '?do=edit', '?do=diff', '?rev=', 'wp-login.php'
+]
 stop_words = [
     "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", 
     "any", "are", "aren", "t", "as", "at", "be", "because", "been", "before", "being", 
