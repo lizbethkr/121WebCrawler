@@ -13,6 +13,21 @@ COMMON_WORDS = dict()
 SUBDOMAINS = dict()
 LONGEST_PAGE = ('', 0)
 
+DEBUG_LOG_FILE = "Report/crawler_debug_log.txt"
+
+debug_stats = {
+    "already_visited": 0,
+    "invalid_scheme": 0,
+    "outside_allowed_domain": 0,
+    "trap_keyword": 0,
+    "events_folder": 0,
+    "blocked_extension": 0,
+    "validation_error": 0,
+    "valid": 0
+}
+
+
+
 def scraper(url, resp):
     global DO_NOT_ENTER
 
@@ -23,10 +38,11 @@ def scraper(url, resp):
         VISITED.add(url)
         subdomains(url)
 
-        tokens = tokenize(resp)
-        if tokens:
-            confirm_longest_page(url, len(tokens))
-            word_freq(tokens)
+        if not word_count_check(resp):
+            tokens = tokenize(resp)
+            if tokens:
+                confirm_longest_page(url, len(tokens))
+                word_freq(tokens)
 
 
     if len(VISITED) % 50 == 0:
@@ -64,14 +80,15 @@ def extract_next_links(url, resp):
         return list(links)
 
     # Avoid urls with too little/much info
-    if word_count_check(resp):
-        DO_NOT_ENTER.add(url)
-        return list(links)
+    #TODO: process the link before -> moved to scraper()
+    # if word_count_check(resp):
+    #     DO_NOT_ENTER.add(url)
+    #     return list(links)
 
     # Already Seen, ignore
-    if url in VISITED:
-        print(f'Seen: {url}')
-        return list(links)
+    #if url in VISITED:
+        #print(f'Seen: {url}')
+        #return list(links)
 
     # Ensure url contains text, not binary
     try:
@@ -81,8 +98,8 @@ def extract_next_links(url, resp):
         return list(links)
 
     # Add url to visited and update subdomains
-    VISITED.add(url)
-    subdomains(url)
+    #VISITED.add(url)
+    #subdomains(url)
 
     # Retrieve links without fragments and complete checks to ensure validity
     try:
@@ -114,48 +131,45 @@ def is_valid(url):
         parsed = urlparse(url)
         clean_url, _ = urldefrag(url)
         domain = parsed.netloc.lower()
-
-        # print(f"[DEBUG] Testing URL: {url}")
-        # print(f"[DEBUG] Domain: '{domain}'")
-        # print(f"[DEBUG] Clean URL: {clean_url}")
+        base = parsed.netloc
 
         if clean_url in DO_NOT_ENTER or clean_url in VISITED:
-            # print(f"[DEBUG] REJECTED: Already in DO_NOT_ENTER or VISITED")
+            log_debug("already_visited", clean_url)
             return False
 
         if parsed.scheme not in {"http", "https"}:
-            # print(f"[DEBUG] REJECTED: Invalid scheme: {parsed.scheme}")
+            log_debug("invalid_scheme", clean_url)
             return False
 
         allowed_domains = ["ics.uci.edu", "cs.uci.edu", "informatics.uci.edu", "stat.uci.edu"]
         # domain_check_results = [domain.endswith(allowed_domain) for allowed_domain in
         #                         allowed_domains]
 
-        # # print(f"[DEBUG] Domain check results: {domain_check_results}")
-        # # print(f"[DEBUG] Allowed domains: {allowed_domains}")
-
         # if not any(domain_check_results):
         #     # print(f"[DEBUG] REJECTED: Domain not in allowed list")
         #     return False
-        if "grape.ics.uci.edu" in base:
-            DoNotCrawl.add(url)
-            return False
+        #if "grape.ics.uci.edu" in base:
+            #DO_NOT_ENTER.add(url)
+            #return False
 
         if not any(
             domain == allowed or domain.endswith("." + allowed)
             for allowed in allowed_domains
         ):
+            log_debug("outside_allowed_domain", clean_url)
             return False
 
         # avoiding traps
         trap_detected = any(keyword in clean_url.lower() for keyword in trap_keywords)
         if trap_detected:
             # print(f"[DEBUG] REJECTED: Trap keyword detected")
+            log_debug("trap_keyword", clean_url)
             DO_NOT_ENTER.add(clean_url)
             return False
         
         # block any events folders (calendars tend to be traps)
         if re.search(r"/events?(/|$)", clean_url.lower()):
+            log_debug("events_folder", clean_url)
             DO_NOT_ENTER.add(clean_url)
             return False
 
@@ -171,13 +185,14 @@ def is_valid(url):
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
 
         if file_match:
-            # print(f"[DEBUG] REJECTED: File extension detected: {file_match.group()}")
+            log_debug("blocked_extension", clean_url)
             return False
 
-        # print(f"[DEBUG] ACCEPTED: URL is valid")
+        debug_stats["valid"] += 1
         return True
 
     except Exception as error:
+        log_debug("validation_error", url)
         print(f"[IS_VALID ERROR] Failed to validate {url}: {error}")
         DO_NOT_ENTER.add(url)
         return False
@@ -244,7 +259,7 @@ def subdomains(url):
 
     try:
         # grab urls ending in .uci.edu
-        structure = r'https?://(.*)\.uci.edu'
+        structure = r'https?://(.*)\.uci\..edu'
         match = re.search(structure, url)
         if not match:
             return
@@ -269,8 +284,8 @@ def subdomains(url):
 def subdomain_write(): #done/untested
     """ Q4 Writes what subdomains are visited in a file """
     with open("Report/subdomains.txt", "w") as subdomains:
-        subdomains.write(f"Subdomain Number: {len(SUBDOMAINS)}\n\n") # Subdomain Number: 3
-        subdomains.write("Subdomain, # of Unique Pages in Subdomain\n\n")
+        subdomains.write(f"# of Subdomains: {len(SUBDOMAINS)}\n\n") # Subdomain Number: 3
+        subdomains.write("Subdomain Name, # of Unique Pages in Subdomain\n\n")
         for item in sorted(SUBDOMAINS):
             subdomains.write(f"{item}, {SUBDOMAINS[item]}\n") # cs.uci.edu, 25
     return
@@ -326,13 +341,23 @@ def word_count_check(resp): #done/untested
     word_count = len(tokenize(resp))
 
     if word_count < 50:
-        print(f"[WORD COUNT] {word_count} < 50)")
+        print(f"[WORD COUNT] {word_count} < 10)")
         return True
     elif word_count > 75000:
-        print(f"[WORD COUNT] {word_count} > 75000)")
+        print(f"[WORD COUNT] {word_count} > 100000)")
         return True
     
     return False # ok to crawl
+
+def log_debug(reason, url):
+    """Log the rejected URL with a reason and update stats."""
+    if reason not in debug_stats:
+        debug_stats[reason] = 0
+    debug_stats[reason] += 1
+    with open(DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"[{reason}] {url}\n")
+
+
 
 trap_keywords = [
     'ical=', 'outlook-ical', 'eventdisplay=past', 'tribe-bar-date', 'action=', 'share=', 'swiki',
