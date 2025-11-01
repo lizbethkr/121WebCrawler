@@ -69,6 +69,7 @@ def extract_next_links(url, resp):
 
     # log urls without 200 response (okay) and return empty set
     if resp.status != 200 or resp.raw_response is None:
+        
         DO_NOT_ENTER.add(url)
         print(f'Skip {url} - HTTP: {resp.status}')
         return list(links)
@@ -168,10 +169,10 @@ def is_valid(url):
             return False
         
         # block any events folders (calendars tend to be traps)
-        if re.search(r"/events?(/|$)", clean_url.lower()):
-            log_debug("events_folder", clean_url)
-            DO_NOT_ENTER.add(clean_url)
-            return False
+        #if re.search(r"/events?(/|$)", clean_url.lower()):
+            #log_debug("events_folder", clean_url)
+            #DO_NOT_ENTER.add(clean_url)
+            #return False
 
 
         file_match = re.search(
@@ -202,7 +203,7 @@ def is_valid(url):
 def unique_pages_write(): #done/untested
     """ Q1:Writes the total # of unique pages successfully crawled to a file """
     with open("Report/UniquePages.txt", "w") as unique_pages:
-        unique_pages.write(f"Unique Pages: {sum(SUBDOMAINS.values())}")
+        unique_pages.write(f"Unique Pages: {len(VISITED)}")
     return
 
 
