@@ -348,19 +348,19 @@ def log_debug(reason, url):
 
 
 
-# trap_keywords = [
-#     'ical=', 'outlook-ical', 'eventdisplay=past', 'tribe-bar-date', 'action=', 'share=', 'swiki',
-#     'calendar', 'event', 'events', '/?page=', '/?year=', '/?month=', '/?day=', '/?view=archive',
-#     '/?sort=', 'sessionid=', 'utm_', 'replytocom=', '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
-#     '/doku', '/files/', '/papers/', '/publications/', '/pub/', 'wp-login.php', '?do=edit', '?do=diff','?rev=',
-#     '/~eppstein/', '/covid19/' , '/doku', 'seminar-series', 'doku.php', 'seminarseries' , 'department-seminars',
-#     '/Nanda', '/seminar'
-#     ]
 trap_keywords = [
-    'action=', 'share=', 'swiki', 'sessionid=', 'utm_', 'replytocom=',
-    '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
-    '/doku', '?do=edit', '?do=diff', '?rev=', 'wp-login.php'
+    'ical=', 'outlook-ical', 'eventdisplay=past', 'tribe-bar-date', 'action=', 'share=', 'swiki',
+    'calendar', 'event', 'events', '/?page=', '/?year=', '/?month=', '/?day=', '/?view=archive',
+    '/?sort=', 'sessionid=', 'utm_', 'replytocom=', '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
+    '/doku', '/files/', '/papers/', '/publications/', '/pub/', 'wp-login.php', '?do=edit', '?do=diff','?rev=',
+    '/~eppstein/', '/covid19/' , '/doku', 'seminar-series', 'doku.php', 'seminarseries' , 'department-seminars',
+    '/Nanda', '/seminar'
 ]
+# trap_keywords = [
+#    'action=', 'share=', 'swiki', 'sessionid=', 'utm_', 'replytocom=',
+#    '/html_oopsc/', '/risc/v063/html_oopsc/a\\d+\\.html',
+#    '/doku', '?do=edit', '?do=diff', '?rev=', 'wp-login.php'
+#]
 stop_words = [
     "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", 
     "any", "are", "aren", "t", "as", "at", "be", "because", "been", "before", "being", 
